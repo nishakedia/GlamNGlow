@@ -1,0 +1,11 @@
+# Minimal Supabase CLI config. Only `project_id` is required; everything else
+# uses CLI defaults. Run `npx supabase init --force` to regenerate a full file if needed.
+project_id = "glam-and-glow"
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[functions.razorpay-webhook]
+# Razorpay calls this without a Supabase JWT; the function verifies Razorpay's signature instead.
+verify_jwt = false

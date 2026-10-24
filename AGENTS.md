@@ -1,41 +1,42 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+Glam & Glow is an Expo/React Native (TypeScript) booking marketplace backed by Supabase. Read `docs/ARCHITECTURE.md` before making structural changes, and `docs/ADDING_A_FEATURE.md` before building a screen.
 
 ## Expo has changed — do not trust your training data
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+Expo ships breaking changes every SDK release. Before writing code that touches an Expo, EAS, or React Native API:
 
-1. Read the major version of the `expo` package in `package.json`.
+1. Read the major version of the `expo` package in `package.json` (currently SDK 57).
 2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+3. For anything else, fetch https://docs.expo.dev/llms.txt and follow its links; never answer from memory.
 
 ## Commands
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
-
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+npx expo install <package>  # ALWAYS use instead of npm add — resolves SDK-compatible versions
+npx expo start              # dev server (-c to clear cache after changing .env)
+npm run typecheck           # tsc --noEmit
+npm run lint                # eslint
+npm run build:web           # static web export to dist/
+npm run db:types            # regenerate src/types/database.ts after schema changes
 ```
 
-Run lint and typecheck before declaring any task done.
+Run typecheck and lint before declaring any task done. If you change SQL, update `supabase/tests/smoke_test.sql` when booking rules change.
 
-## Navigation & Routing
+## Project conventions
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+- **Navigation is React Navigation** (native-stack + bottom-tabs), not Expo Router. Routes and params are typed in `src/types/navigation.ts`; screens are registered in `src/navigation/RootNavigator.tsx`. Role switching = `authStore.activeRole` choosing `CustomerTabs` vs `VendorTabs`.
+- **Feature folders**: `src/features/<feature>/{screens,components,api.ts}`. Only `api.ts` files import `supabase`.
+- **Server state → React Query** (keys from `qk` in `src/services/queryClient.ts`). **Client-only state → Zustand** (`src/store`). Never mirror query data into a store.
+- Supabase results go through `unwrap` / `unwrapMaybe` / `assertOk` from `src/services/supabase.ts`.
+- Forms: React Hook Form + Zod (`zodResolver`).
+- Styling: `Text` variants and tokens from `@/theme`; no raw hex colours or font sizes in components.
+- Platform-specific code: `file.ts` + `file.web.ts`. Never import `react-native-maps` or `react-native-razorpay` from code that runs on web.
+- Business rules that must be trusted (prices, availability, matching, status changes) live in Postgres functions under `supabase/migrations`, not in the app.
 
 ## Building with EAS
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+Use EAS to build and ship (`npx eas-cli@latest build`, `npx eas-cli@latest update`). Cloud builds read env vars from EAS environments, not `.env` (see `docs/DEPLOYMENT.md`).
 
 ## Rules
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+- `ios/` and `android/` are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.config.ts` and config plugins.
+- Expo Go only includes its bundled native modules. Razorpay, remote push and Google Maps on Android need a development build (`npm run build:android:dev`).

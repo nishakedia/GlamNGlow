@@ -1,0 +1,14 @@
+# Netlify (free tier) — static web build of the Expo app.
+# Set EXPO_PUBLIC_* env vars in Netlify → Site settings → Environment variables.
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Single-page app: serve index.html for every route.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
